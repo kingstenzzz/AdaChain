@@ -26,7 +26,7 @@ extern atomic<unsigned long> last_log_index;
 extern deque<atomic<unsigned long>> match_index;
 extern atomic<unsigned long> commit_index;
 extern uint64_t block_index;
-
+//结构
 struct Architecture {
     size_t max_block_size;
     bool is_xov;

@@ -27,7 +27,7 @@ agent_exchange_lock = Lock()
 
 class AgentCommServicer(blockchain_pb2_grpc.AgentCommServicer):
 
-    def __init__(self, peer_config, preprepare_queue):
+    def __init__(self, peer_config, preprepare_queue):#../../config/peer_config.json配置网络信息
         self.peer_config = peer_config
         self.num_agents = len(self.peer_config['sysconfig']['agents'])
         self.preprepare_queue = preprepare_queue
@@ -102,7 +102,7 @@ def preprepare_handler(peer_config, preprepare_queue, agent_channels):
         # logging.info('finish sending prepare messages for originator=%s.', preprepare.originator)
 
 
-def seed_model_and_experience(seed_file, model, experiences_window, experiences_X, experiences_y):
+def seed_model_and_experience(seed_file, model, experiences_window, experiences_X, experiences_y):##没用
     df = pd.read_csv(seed_file)
     df.rename(columns=str.strip, inplace=True)
     df_X = df.loc[:, 'write_ratio':'blocksize * early_execution']
@@ -138,7 +138,7 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
     initial_early_execution = peer_config['arch']['early_execution']
     initial_reorder = peer_config['arch']['reorder']
 
-    data_store = open('data.csv', 'w')
+    data_store = open('data.csv', 'w')#数据文件
     csv_writer = csv.writer(data_store)
     csv_writer.writerow(
         ['write_ratio', 'hot_key_ratio', 'trans_arrival_rate', 'execution_delay (us)', 'blocksize', 'early_execution',
@@ -151,10 +151,11 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
     # rf = GradientBoostingRegressor()
     # seed_model_and_experience('ts_eval_2_window_no.csv', rf, experiences_window, experiences_X, experiences_y)
     # optimal_action_predicted = []
-    blocksizes = [1, 10, 20] + list(range(50, 1000, 50))
+    ##action
+    blocksizes = [1, 10, 20] + list(range(50, 1000, 50))## 22
     early_execution = [False, True]
     reorder = [False, True]
-    actions = []
+    actions = []#22*2*2
     for dim_1 in blocksizes:
         for dim_2 in early_execution:
             for dim_3 in reorder:
@@ -165,6 +166,7 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
                 actions.append(np.array([dim_1, dim_2, dim_3, dim_4]))
     actions_matrix = np.vstack(actions)
     enumeration_matrix = np.hstack((np.zeros((actions_matrix.shape[0], 4)), actions_matrix))
+    ##
     logging.info('learning agent has been initialized.')
 
     time_records = []
@@ -237,7 +239,7 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
 
         """ Exchange <state, throughput> with other agents """
         communication_start = time.time()
-        agent_exchange = blockchain_pb2.AgentExchange(
+        agent_exchange = blockchain_pb2.AgentExchange(##交换指标
             originator=my_address, write_ratio=local_write_ratio, hot_key_ratio=local_hot_key_ratio,
             trans_arrival_rate=local_trans_arrival_rate, execution_delay=local_execution_delay,
             throughput=local_throughput)
@@ -274,19 +276,19 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
             experiences_y.pop(0)
         if episode:
             training_start = time.time()
-            feature_idx = np.array([True, True, True, True, True, True, True, False])
+            feature_idx = np.array([True, True, True, True, True, True, True, False])##
             if len(experiences_X) > 20:
-                bootstrapped_idx = np.random.choice(len(experiences_X), len(experiences_X), replace=True)
+                bootstrapped_idx = np.random.choice(len(experiences_X), len(experiences_X), replace=True)##随机抽取训练数据集的方法
                 training_X = np.vstack(experiences_X)[bootstrapped_idx, :][:, feature_idx]
                 training_y = np.array(experiences_y)[bootstrapped_idx]
             else:
                 training_X = np.vstack(experiences_X)[:, feature_idx]
                 training_y = np.array(experiences_y)
-            rf.fit(training_X, training_y)
+            rf.fit(training_X, training_y)#训练
             training_overhead = round(time.time() - training_start, 6)
 
             # save the latest experience to csv file
-            csv_writer.writerow(experiences_X[-1].tolist() + [experiences_y[-1]] + time_records[-1])
+            csv_writer.writerow(experiences_X[-1].tolist() + [experiences_y[-1]] + time_records[-1])##写入data.csv
             data_store.flush()
         else:
             training_overhead = 0
@@ -295,18 +297,19 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
         if len(experiences_X) > 0:
             inference_start = time.time()
             enumeration_matrix[:, 0:4] = np.array([write_ratio, hot_key_ratio, trans_arrival_rate, execution_delay])
-            feature_idx = np.array([True, True, True, True, True, True, True, False])
-            prediction = rf.predict(enumeration_matrix[:, feature_idx])
+            ## write_ratio, hot_key_ratio, trans_arrival_rate, execution_delay  blocksize early_execution reorder dim4
+            feature_idx = np.array([True, True, True, True, True, True, True, False])##不要最后一列
+            prediction = rf.predict(enumeration_matrix[:, feature_idx])##
             # best_index = np.argmax(prediction)
             while True:
-                best_index = np.random.choice(np.flatnonzero(np.isclose(prediction, prediction.max())), replace=True)
+                best_index = np.random.choice(np.flatnonzero(np.isclose(prediction, prediction.max())), replace=True)##选择
                 best_blocksize = enumeration_matrix[best_index, 4]
                 best_early_execution = enumeration_matrix[best_index, 5]
                 best_reorder = enumeration_matrix[best_index, 6]
                 # if not (best_early_execution == 1 and best_reorder == 1):
                 #     break
                 break
-            experiences_X.append(enumeration_matrix[best_index, :])
+            experiences_X.append(enumeration_matrix[best_index, :])##放入经验
             inference_overhead = round(time.time() - inference_start, 6)
             # optimal_action_predicted.append(prediction[2])
         else:
@@ -318,7 +321,7 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
             else:
                 product = -1 * best_blocksize
             experiences_X.append(np.array([write_ratio, hot_key_ratio, trans_arrival_rate, execution_delay,
-                                           best_blocksize, best_early_execution, best_reorder, product]))
+                                           best_blocksize, best_early_execution, best_reorder, product]))##经验池
             inference_overhead = 0
             # optimal_action_predicted.append(0)
 
