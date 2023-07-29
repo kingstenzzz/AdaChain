@@ -24,7 +24,7 @@ Your testbed is ready to run the experiments!
 The following dependencies are required to run AdaChain on your own infrastructure:
 - g++-9
 - LevelDB
-- gRPC C++
+- gRPC C++ （protobuf 3.18.x）
 - Python 3.8
 - Python modules: sklearn, numpy, pandas, grpc (grpcio), grpcio-tools, jupyter
 
