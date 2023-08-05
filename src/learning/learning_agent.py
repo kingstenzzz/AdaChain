@@ -10,6 +10,8 @@ import logging
 from threading import Condition, Lock
 import queue
 import grpc
+from google.protobuf.text_encoding import string
+
 import blockchain_pb2
 import blockchain_pb2_grpc
 import numpy as np
@@ -124,11 +126,15 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
 
     def new_episode_info(stub, action):
         response = stub.new_episode_info(action)
+        logging.info('new_episode_info'+response)
 
-    def send_preprepare(stub, request):
+
+def send_preprepare(stub, request):
         response = stub.send_preprepare(request)
+        logging.info('send_preprepare'+response)
 
-    """ Init """
+
+""" Init """
     experiences_X = []
     experiences_y = []
     t = futures.ThreadPoolExecutor(max_workers=len(agent_channels))
@@ -186,6 +192,7 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
 
         """ Extract feature from blocks """
         feature_extraction_start = time.time()
+        logging.info('Extract feature from blocks')
         blocks = []
         while True:
             data = block_store.read(4)
@@ -236,8 +243,12 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
             # measure the execution delay in us
             local_execution_delay = (execution_delay_total_ms / num_total_trans) * 1000
             feature_extraction_overhead = round(time.time() - feature_extraction_start, 6)
+            logging.info('feature_extraction_overhead'+str(feature_extraction_overhead))###
 
-        """ Exchange <state, throughput> with other agents """
+
+""" Exchange <state, throughput> with other agents """
+logging.info('state, throughput> with other agents ')###
+
         communication_start = time.time()
         agent_exchange = blockchain_pb2.AgentExchange(##交换指标
             originator=my_address, write_ratio=local_write_ratio, hot_key_ratio=local_hot_key_ratio,
@@ -270,6 +281,7 @@ def run_agent(my_address, peer_config, agent_channels, peer_channel, num_episode
                      episode + 1, len(blocks), local_trans_arrival_rate, num_total_trans, seconds)
 
         """ Retrain """
+        logging.info("Retrain")
         assert (len(experiences_X) == len(experiences_y))
         while len(experiences_X) > experiences_window:
             experiences_X.pop(0)
